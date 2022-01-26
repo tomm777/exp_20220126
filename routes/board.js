@@ -25,7 +25,7 @@ router.post('/insert', upload.single("image"),
         const dbconn = await db.connect(dburl);
         //2. DB선택 및 컬렉션 선택
         const collection = dbconn.db(dbname).collection('sequence');
-        //3시퀀스에서 값을 가져오고, 그 다음 위해서 증가
+        //3. 시퀀스에서 값을 가져오고, 그 다음 위해서 증가
         const result = await collection.findOneAndUpdate(
             // 데이터베이스를 참고하여 작성해야함
             {_id : 'SEQ_BOARD1_NO'}, // 가지고 오기 위한 조건
