@@ -389,6 +389,33 @@ router.get('/selectreply', async function(req, res, next) {
         res.send({status : -1, message:e});  // 프론트로 전달함.
     }
     });
+    // 답글 삭제
+    // localhost:3000/board/deletereply?_id=2
+    router.delete('/deletereply', async function(req, res, next) {
+        try{    
+            // 1. 전달되는 값 받기
+            const id = Number(req.query._id);
+    
+            // 2. db연결, db선택, 컬렉션선택
+            const dbconn = await db.connect(dburl); //연결
+            const collection = dbconn.db(dbname).collection('boardreply1');
+    
+            // 3. db에서 원하는 값 가져오기 (findOne (1개) or find(n개))
+            const result = await collection.deleteOne(
+                {_id : id }, //조건
+            );
+            console.log(result);
+            if(result.deletedCount === 1){
+                return res.send({status:200});
+            }
+            return res.send({status : 0})  // 삭제를 못한경우
+        }
+    
+        catch(e){
+            console.error(e); // 개발자가 확인하는 용도
+            res.send({status : -1, message:e});  // 프론트로 전달함.
+        }
+        });
 
 
 
