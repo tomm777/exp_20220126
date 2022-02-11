@@ -97,7 +97,10 @@ router.get('/selectlist',checkToken, async function(req, res, next){
         // result => [ {result[0]}, {result[1]}, {result[2]} ]
         // 변수에 없는키를 넣어야 추가가 됨. 있는 키는 변경   
             for(let i=0; i<result.length; i++){
-                result[i]['imageUrl'] = `/seller/image?code=${result[i]._id}`;
+                                                                            
+                result[i]['imageUrl'] = `/seller/image?code=${result[i]._id}&ts${new Date().getTime()}`;
+                // 이미지를 바로 읽을수 있게 함
+                //url정보를 다르게
             }
 
         return res.send({status:200, result:result});
@@ -210,6 +213,13 @@ router.get('/selectcode', async function(req, res, next){
 // localhost:3000/seller/update
 router.put('/update',checkToken,upload.array("image"), async function(req, res, next){
     try {
+        //2개이상 {code : [1011,1012], title : ['a','b']}
+        //1개 {code :1011, title:'a'}
+        console.log(req.body);
+
+        //1개 [{}]
+        //2개 [{},{}]
+        console.log(req.files);
         // DB연동
         const dbconn = await db.connect(dburl);
         const collection = dbconn.db(dbname).collection('item1');
@@ -218,29 +228,30 @@ router.put('/update',checkToken,upload.array("image"), async function(req, res, 
         // 여러개일 경우 req.body => {  code : [1011,1012], title : ['a','b']}
         // 한개일 경우 req.body => {title :1, price:3} 배열이 아님
         // req.files => [{},{}]
-        let cnt = 0;  //실제로 변경할 개수를 누적할 변수
-        for(let i=0; i<req.body.title.length; i++){
-            let obj = { //4개의 키만
-                name        : req.body.title[i],
-                price       : req.body.price[i],
-                quantity    : req.body.quantity[i],
-                content     : req.body.content[i],
-            };
 
+        // req.body.title이 배열인지 아닌지 물어보는 구문 2개 이상인가 아닌가
+        if( Array.isArray(req.body.title) ) {
+            let cnt = 0; //실제적으로 변경한 개수를 누적할 변수
+            for(let i=0; i<req.body.title.length; i++){
+                let obj = { //4개의 키만
+                    name        : req.body.title[i],
+                    price       : Number(req.body.price[i]),
+                    quantity    : Number(req.body.quantity[i]),
+                    content     : req.body.content[i],
+                };
 
-            // 이미지 첨부하면 키를 4개더 추가 8개
-            if(typeof req.files[i] !== 'undefined'){
-                obj['filename'] = req.files[i].originalname;
-                obj['filedata'] = req.files[i].buffer;
-                obj['filetype'] = req.files[i].mimetype
-                obj['filesize'] = req.files[i].size;
-            }
-           
-            const result = await collection.updateOne(
-                {_id : Number(req.body.code[i])}, //조건
-                { $set : obj}     //변경내용
+                // 이미지 첨부하면 키를 4개더 추가 8개
+                if ( typeof req.files[i] !== 'undefined') {
+                    obj['filename'] = req.files[i].originalname;
+                    obj['filedata'] = req.files[i].buffer;
+                    obj['filetype'] = req.files[i].mimetype;
+                    obj['filesize'] = Number(req.files[i].size);
+                }
+
+                const result = await collection.updateOne(
+                    { _id  : Number(req.body.code[i]) }, //조건
+                    { $set : obj } //변경내용
                 );
-
                 cnt += result.matchedCount;
             }
 
@@ -248,13 +259,40 @@ router.put('/update',checkToken,upload.array("image"), async function(req, res, 
             if(cnt === req.body.title.length){
                 return res.send({status : 200});
             }
-            return res.send({status : 0});
-      }
-      catch(e){
-              console.error(e);
-              res.send({status : -1, message:e});
-      }
-  });
+        }
+        else {
+            let obj = { //4개의 키만
+                name        : req.body.title,
+                price       : Number(req.body.price[i]),
+                quantity    : Number(req.body.quantity[i]),
+                content     : req.body.content,
+            };
+
+            // 이미지 첨부하면 키를 4개더 추가 8개
+            if ( typeof req.files[0] !== 'undefined') {
+                obj['filename'] = req.files[0].originalname;
+                obj['filedata'] = req.files[0].buffer;
+                obj['filetype'] = req.files[0].mimetype;
+                obj['filesize'] = Number(req.files[0].size);
+            }
+
+            const result = await collection.updateOne(
+                { _id  : Number(req.body.code) }, //조건
+                { $set : obj } //변경내용
+            );
+
+            if(result.modifiedCount === 1){
+                return res.send({status : 200});
+            }
+        }
+       
+        return res.send({status : 0});
+    }
+    catch(e) {
+        console.error(e);
+        return res.send({status : -1, message:e});
+    }
+});
 
 
 // 물품 일괄 삭제
@@ -308,20 +346,20 @@ router.post('/insert',upload.array("image"),checkToken, async function(req, res,
                 {_id : 'SEQ_ITEM1_NO'}, // 가지고 오기 위한 조건
                 {$inc : {seq : 1}}       // seq값을 1증가시킴 
                 );
-            arr.push({
-                _id         : result.value.seq,
-                name        : req.body.title[i],
-                price       : req.body.price[i],
-                quantity    : req.body.quantity[i],
-                content     : req.body.content[i],
-                filename    : req.files[i].originalname,
-                filedata    : req.files[i].buffer,
-                filetype    : req.files[i].mimetype,
-                filesize    : req.files[i].size,
-                regdate    : new Date(),
-                // checktoken에서 넣어줌 판매자를 넣어줘야함 
-                seller     : req.body.uid 
-            });
+                arr.push({
+                    _id         : result.value.seq,
+                    name        : req.body.title[i],
+                    price       : Number(req.body.price[i]),
+                    quantity    : Number(req.body.quantity[i]),
+                    content     : req.body.content[i],
+                    filename    : req.files[i].originalname,
+                    filedata    : req.files[i].buffer,
+                    filetype    : req.files[i].mimetype,
+                    filesize    : Number(req.files[i].size),
+                    regdate     : new Date(),
+                    seller      : req.body.uid,
+                    // checktoken에서 넣어줌 판매자를 넣어줘야함 
+                });
         }
         console.log(arr); // 물품명, 가격, 수량, 내용
          // 추가할 컬렉션 선택
