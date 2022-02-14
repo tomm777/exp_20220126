@@ -12,6 +12,34 @@ const dbname = require('../config/mongodb').DB;
 
 const itemCount = 16;  // 한페이지에 보여줄 개수
 
+// 주문 일괄 취소
+// localhost:3000/shop/orderdelete
+router.delete('/orderdelete',checkToken, async function(req, res, next){
+    try {
+        // {"code":[1021,1022]}
+        const code = req.body.chk;
+        console.log(code);
+
+        const dbconn = await db.connect(dburl);
+        const collection = dbconn.db(dbname).collection('order1');
+
+       // { $in : [1,2,3,4] } 포함 된 항목
+       const result = await collection.deleteMany(
+        { _id : {$in : code},
+            orderid  : req.body.uid}
+    )
+    console.log(result);
+    if(result.deletedCount === code.length){
+        return res.send({status : 200});    
+    }
+    return res.send({status : 0});
+}
+catch(e) {
+    console.error(e);
+    return res.send({status : -1, message:e});
+}
+});
+
 // 주문목록 리스트
 // localhost:3000/shop/orderlist
 router.get('/orderlist', checkToken, async function(req, res, next) {

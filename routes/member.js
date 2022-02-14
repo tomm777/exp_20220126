@@ -17,6 +17,21 @@ const jwtKey = require('../config/auth').securitykey;
 const jwtOptions = require('../config/auth').options;
 const checkToken = require('../config/auth').checkToken;
 
+// 토큰이 오면 이메일 전송함
+// localhost:3000/member/email
+router.get('/email', checkToken,async function(req, res, next) {
+  try {
+      return res.send({status : 200,
+         email: req.body.uid,
+          name:req.body.uname});
+    }
+
+  catch(e) {
+    console.error(e);
+    res.send({status : -1, message:e});
+  }
+});
+
 // 로그인 post
 // localhost:3000/member/select
 // 이메일, 암호  => 현시점에 생성된 토큰을 전송
