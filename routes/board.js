@@ -10,6 +10,11 @@ const dbname = require('../config/mongodb').DB;
 const multer = require('multer');
 const upload = multer({storage:multer.memoryStorage()});
 
+//조회 : await axios.get(url, {headers:headers});
+//추가 : await axios.post(url, body, {headers:headers});
+//수정 : await axios.put(url, body, {headers:headers});
+//삭제 : await axios.delete(url, {headers:headers, data:{}});
+
 // Post   : insert
 // Put    : update
 // Delete : delete
@@ -18,6 +23,7 @@ const upload = multer({storage:multer.memoryStorage()});
 // localhost:3000/board/insert
 // insert - title, content, writer, image 
 // _id, regdate
+// 게시판 글쓰기
 router.post('/insert', upload.single("image"),
              async function(req, res, next) {
     try{    
@@ -225,7 +231,7 @@ catch(e){
 }
 });
 
-// 조회수 1씩증가.
+// 조회수 5씩증가.
 // localhost:3000/board/updatehit?no=123
 router.put('/updatehit', async function(req, res, next) {
     try{    
@@ -239,7 +245,7 @@ router.put('/updatehit', async function(req, res, next) {
         // 3. 조회수 증가
         const result = await collection.updateOne(
             {_id : no }, //조건
-            {$inc : {hit : 10}}, //실제 수행할 내용 hit 를 10씩 증가시킴
+            {$inc : {hit : 5}}, //실제 수행할 내용 hit 를 10씩 증가시킴
         );
         console.log(result);
         // 4. DB수행 후 반환되는 결과 값에 따라 적절한 갑을 전달 
