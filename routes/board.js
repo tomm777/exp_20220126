@@ -129,7 +129,7 @@ router.get('/select', async function(req, res, next) {
            {}
        );
 
-       return res.send({status : 200 , rows:result, totla : result1})
+       return res.send({status : 200 , rows:result, total : result1})
     }
       
 

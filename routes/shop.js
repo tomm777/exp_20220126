@@ -86,55 +86,88 @@ router.get('/orderlist', checkToken, async function(req, res, next) {
 });
 
 
-// 시간대별 주문수량
-// localhost:3000/shop/grouphour
-router.get('/grouphour',  async function(req, res, next) {
-    try{  
-        const dbconn = await db.connect(dburl);
-        const collection = dbconn.db(dbname).collection('order1');
-        const result = await collection.aggregate([
-            {
-            $project : {    // 가져올 항목 ( 물품코드, 주문수량)
-                orderdate : 1,  // 주문일자
-                ordercnt  : 1,  // 주문수량
-                month : {$month : '$orderdate'},    // 주문일자를 이용해서 달
-                hour  : {$hour  : '$orderdate'},    // 주문일자를 이용해서 시
-                minute : {$minute  : '$orderdate'}, // 주문일자를 이용해서 분
+// // 시간대별 주문수량
+// // localhost:3000/shop/grouphour
+// router.get('/grouphour',  async function(req, res, next) {
+//     try{  
+//         // 판매자 토큰
+//         const email = req.body.uid;
 
-            }
-        },
-        {
-            $group : {
-                _id : '$hour', // 그룹할 항목
-                count : {
-                    $sum : '$ordercnt'
-                }
-            }
+//         // 물품에서 판매자가 email과 같은것 => 물품코드 
+//         const collection = dbconn.db(dbname).collection('item1');
+//         // 고유값 꺼내기 distinct(고유한 값 컬럼명, 조건)
+//         const result = await collection.distinct("_id",
+//                 {seller : email});
+//         // [100,200]
+//         console.log('grouphour',result);
 
-            },
+//         const collection1 = dbconn.db(dbname).collection('order1');
+
+//         const result1 = await collection1.aggregate([
+//             {
+//                 $match : {
+//                     itemcode : {$in: result}
+//                 }
+//             },
+//             {
+//             $project : {    // 가져올 항목 ( 물품코드, 주문수량)
+//                 orderdate : 1,  // 주문일자
+//                 ordercnt  : 1,  // 주문수량
+//                 month : {$month : '$orderdate'},    // 주문일자를 이용해서 달
+//                 hour  : {$hour  : '$orderdate'},    // 주문일자를 이용해서 시
+//                 minute : {$minute  : '$orderdate'}, // 주문일자를 이용해서 분
+
+//             }
+//         },
+//         {
+//             $group : {
+//                 _id : '$hour', // 그룹할 항목
+//                 count : {
+//                     $sum : '$ordercnt'
+//                 }
+//             }
+
+//             },
             
 
-     ]).toArray();
+//      ]).toArray();
 
-    return res.send({status : 200,result:result});
+//     return res.send({status : 200,result:result1});
         
   
-    }
-        catch(e){
-            console.error(e);
-            res.send({status : -1, message:e});
-        }
-        });
+//     }
+//         catch(e){
+//             console.error(e);
+//             res.send({status : -1, message:e});
+//         }
+//         });
 
-// 상품별 주문수량
-// localhost:3000/shop/groupitem
-router.get('/groupitem', async function(req, res, next) {
+// 상품별 주문수량(판매자 정보가 필요함)
+// localhost:3000/shop/groupitem?code=1047
+// item1(판매자내용만 꺼냄) + order1에 itemcode가 일치하는 것만
+router.get('/groupitem',checkToken, async function(req, res, next) {
     try{
+        // 판매자 토큰
+        const email = req.body.uid;
         const dbconn = await db.connect(dburl);
-        const collection = dbconn.db(dbname).collection('order1');
 
+        // 물품에서 판매자가 email과 같은것 => 물품코드 
+        const collection = dbconn.db(dbname).collection('item1');
+        // 고유값 꺼내기 distinct(고유한 값 컬럼명, 조건)
+        const result = await collection.distinct("_id",
+                {seller : email});
+        // [100,200]
+        console.log('groupitem',result);
+
+        const collection1 = dbconn.db(dbname).collection('order1');
         // 그룹별 통계 aggregate
-        const result = await collection.aggregate([
+        const result1 = await collection1.aggregate([
+            {
+                $match : {
+                    itemcode : {$in: result}
+                }
+            },
+
             {
                 $project : { //가져올 항목( 물품코드, 주문수량 )
                     _id : 1,
@@ -151,15 +184,9 @@ router.get('/groupitem', async function(req, res, next) {
                     }
                 }
             },
-
-            {
-                $match : {
-                    _id : 1107
-                }
-            },
         ]).toArray();
         
-        return res.send({status:200, result:result});
+        return res.send({status:200, result:result1});
     }
     catch(e){
         console.error(e);

@@ -18,12 +18,12 @@ const jwtOptions = require('../config/auth').options;
 const checkToken = require('../config/auth').checkToken;
 
 // 토큰이 오면 이메일 전송함
-// localhost:3000/member/email
-router.get('/email', checkToken,async function(req, res, next) {
+// localhost:3000/member/validation
+router.get('/validation', checkToken,async function(req, res, next) {
   try {
       return res.send({status : 200,
-         email: req.body.uid,
-          name:req.body.uname});
+         uid  : req.body.uid,
+        uname : req.body.uname});
     }
 
   catch(e) {
@@ -60,7 +60,7 @@ router.post('/select', async function(req, res, next) {
         jwtKey,           // 토큰생성시 키값
         jwtOptions,       // 토큰생성 옵션
       );
-      return res.send({status : 200, token:token});
+      return res.send({status : 200, token:token, uid:email, uname:result.name});
     }
 
     return res.send({status : 0});

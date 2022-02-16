@@ -26,6 +26,155 @@ const multer = require('multer');
 const { response } = require('express');
 const upload = multer({storage:multer.memoryStorage()});
 
+// 시간대별 주문수량
+// localhost:3000/shop/grouphour
+// 판매자의 토큰이 전송되면 검증후에 이메일을 꺼냄
+// ITEM1 컬렉션에 판매자의 상품코드를 꺼냄
+// order1에 상품코드가 일치하는 것만 가져와서 group처리
+
+router.get('/grouphour', checkToken, async function(req, res, next) {
+    try{  
+        // 판매자 토큰
+        const email = req.body.uid;
+        const dbconn = await db.connect(dburl);
+        // 이메일이 일치하는 판매자의 물품코드 [1,2,3,4,]
+        const collection = dbconn.db(dbname).collection('item1');
+        // 고유값 꺼내기 distinct(고유한 값 컬럼명, 조건)
+        const result = await collection.distinct("_id",
+                {seller : email});
+        // [100,200]
+        const collection1 = dbconn.db(dbname).collection('order1');
+
+        const result1 = await collection1.aggregate([
+            {
+                $match : {
+                    itemcode : {$in: result}
+                }
+            },
+            {
+            $project : {    // 가져올 항목 ( 물품코드, 주문수량)
+                orderdate : 1,  // 주문일자
+                ordercnt  : 1,  // 주문수량
+                month : {$month : '$orderdate'},    // 주문일자를 이용해서 달
+                hour  : {$hour  : '$orderdate'},    // 주문일자를 이용해서 시
+                minute : {$minute  : '$orderdate'}, // 주문일자를 이용해서 분
+
+            }
+        },
+        {
+            $group : {
+                _id : '$hour', // 그룹할 항목
+                count : { $sum : '$ordercnt'}
+            },
+            },
+            {
+                $sort : {
+                    _id : 1 
+                }
+            }
+            
+
+     ]).toArray();
+
+    return res.send({status : 200,result:result1});
+        
+  
+    }
+        catch(e){
+            console.error(e);
+            res.send({status : -1, message:e});
+        }
+        });
+
+
+// 회원목록  : 판매자가 등록한 물품에 대해 주문한 고객 정보
+// localhost:3000/seller/memberlist
+router.get('/memberlist',checkToken, async function(req, res, next){
+    try {
+        const email = req.body.uid  //판매자의 이메일
+        const dbconn = await db.connect(dburl);
+
+        const collection = dbconn.db(dbname).collection('item1');
+        const result = await collection.find(
+            {seller : email },          // 조건
+            { projection : { _id : 1}}   // 가져올 컬럼 설정
+            ).toArray();
+            console.log(result);
+
+
+        let code = [];
+        for(let tmp of result){
+            code.push(tmp._id);
+        }
+        const collection1 = dbconn.db(dbname).collection('order1');
+        // 고유값 꺼내기 distinct(고유한값 컬럼명, 조건)
+        const result1 = await collection1.distinct("orderid", 
+        {itemcode  : {$in: code }});
+            // console.log(result1);
+
+            const collection2 = dbconn.db(dbname).collection('member1');
+            const result2 = await collection2.find(
+            {_id : {$in : result1} },          // 조건
+            {projection : {pw : 0}}
+            ).toArray();
+
+            return res.send({status:200, result:result2});
+
+         }
+         catch(e) {
+             console.error(e);
+             return res.send({status : -1, message:e});
+         }
+     });
+
+// 주문목록 : 판매자가 등록한 물품에 대해서 고객이 주문한 내역
+// localhost:3000/seller/orderlist
+// item1 + order1 + member1
+router.get('/orderlist',checkToken, async function(req, res, next){
+    try {
+        const email = req.body.uid  //판매자의 이메일
+        const dbconn = await db.connect(dburl);
+
+        // 1. 판매자가 등록한 물품의 코드들 가져오기
+        const collection = dbconn.db(dbname).collection('item1');
+        const result = await collection.find(
+            {seller : email },          // 조건
+            { projection : { _id : 1}}   // 가져올 컬럼 설정
+            ).toArray();
+            console.log(result);
+
+
+            // result => [{_id:1},{_id:2},{_id:3}]
+            // [{}] -> []로 바꿔야함
+            // $in = [] => [1,2,3,4]
+
+        // 2 받은 결과를 배열로 변경
+        //  [{_id:1},{_id:2},{_id:3},{_id:4}]
+        let code = [];
+        for(let tmp of result){
+            code.push(tmp._id);
+        }
+        // 위에랑 똑같음
+        // for(let i=0; i<result.length;i++){
+        //     code.push(result[i]._id)
+        // }
+
+        // 3. 주문내역에서 가져온 코드에 해당하는 항목만 가져오기
+        const collection1 = dbconn.db(dbname).collection('order1');
+        const result1 = await collection1.find(
+            {itemcode : {$in : code} },          // 조건
+            ).toArray();
+
+            // 4. result1에 있는 내용을 리턴함
+            return res.send({status:200, result:result1});
+
+         }
+         catch(e) {
+             console.error(e);
+             return res.send({status : -1, message:e});
+         }
+     });
+
 // 1. 물품1개 조회(물품코드가 전달되면)
 // localhost:3000/seller/selectone?code=111
 router.get('/selectone',checkToken, async function(req, res, next){
