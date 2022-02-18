@@ -17,6 +17,80 @@ const jwtKey = require('../config/auth').securitykey;
 const jwtOptions = require('../config/auth').options;
 const checkToken = require('../config/auth').checkToken;
 
+
+// --SQLBOOST에서 시퀀스 생성
+// db.sequence.insert({
+//   _id : 'SEQ_MEMBERADDR1_NO',
+//   seq : 2000,
+// })
+
+// 주소등록
+// /member/insertaddr
+// vue 에서는 토큰 입력할 주소
+router.post('/insertaddr', checkToken,async function(req, res, next) {
+  try {
+    const result = await collection.findOneAndUpdate(
+      { _id : 'SEQ_MEMBERADDR1_NO' }, // 가지고 오기 위한 조건
+      { $inc : {seq : 1 } }      // seq값을 1증가씨킴
+    );
+      const obj = {
+        _id     : result.value.seq,
+        address : req.body.address, // 주소정보
+        memberid : req.body.uid,    //토큰에서 꺼내기
+        chk      : 0,  // 대표주소 설정 (숫자크면 우선순위 부여)
+        regdate  : new Data(),
+      }
+    }
+
+  catch(e) {
+    console.error(e);
+    res.send({status : -1, message:e});
+  }
+});
+
+
+
+// 주소목록
+router.get('/selectaddr', checkToken,async function(req, res, next) {
+  try {
+    
+    }
+
+  catch(e) {
+    console.error(e);
+    res.send({status : -1, message:e});
+  }
+});
+
+// 주소삭제
+router.delete('/deleteaddr', checkToken,async function(req, res, next) {
+  try {
+    
+    }
+
+  catch(e) {
+    console.error(e);
+    res.send({status : -1, message:e});
+  }
+});
+
+// 주소수정
+router.put('/updateaddr', checkToken,async function(req, res, next) {
+  try {
+    
+    }
+
+  catch(e) {
+    console.error(e);
+    res.send({status : -1, message:e});
+  }
+});
+
+// 대표주소 설정
+router.put('/updatechkaddr', checkToken, async function(req, res, next) {
+
+});
+
 // 토큰이 오면 정보전송 전송함
 // localhost:3000/member/validation
 router.get('/validation', checkToken,async function(req, res, next) {
