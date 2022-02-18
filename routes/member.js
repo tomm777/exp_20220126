@@ -17,13 +17,15 @@ const jwtKey = require('../config/auth').securitykey;
 const jwtOptions = require('../config/auth').options;
 const checkToken = require('../config/auth').checkToken;
 
-// 토큰이 오면 이메일 전송함
+// 토큰이 오면 정보전송 전송함
 // localhost:3000/member/validation
 router.get('/validation', checkToken,async function(req, res, next) {
   try {
-      return res.send({status : 200,
-         uid  : req.body.uid,
-        uname : req.body.uname});
+      return res.send({
+        status : 200,
+        uid  : req.body.uid,
+        uname : req.body.uname,
+        urole  : req.body.urole});
     }
 
   catch(e) {
@@ -56,11 +58,16 @@ router.post('/select', async function(req, res, next) {
 
     if(result !== null) { //로그인 가능
       const token = jwt.sign(
-        { uid : email, uname : result.name }, // 토큰에 포함할 내용들...
+        { uid   : email,
+          uname : result.name,
+          urole : result.role 
+        }, // 세션 => 토큰에 포함할 내용(아이디, 이름, 권한)
         jwtKey,           // 토큰생성시 키값
         jwtOptions,       // 토큰생성 옵션
       );
-      return res.send({status : 200, token:token, uid:email, uname:result.name});
+      return res.send({status : 200, token:token});
+      // uid:email, uname:result.name, // 이메일, 이름
+      // urole : result.urole //권한
     }
 
     return res.send({status : 0});
@@ -88,7 +95,8 @@ router.post('/insert', async function(req, res, next) {
       _id     : req.body.email,
       pw      : hashPassword,
       name    : req.body.name,
-      regdate : new Date()
+      role    : req.body.role,
+      regdate : new Date(),
     }
 
     // 2. db연결, db선택, 컬렉션선택

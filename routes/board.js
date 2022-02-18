@@ -231,7 +231,7 @@ catch(e){
 }
 });
 
-// 조회수 5씩증가.
+// 조회수 2씩증가.
 // localhost:3000/board/updatehit?no=123
 router.put('/updatehit', async function(req, res, next) {
     try{    
@@ -245,7 +245,7 @@ router.put('/updatehit', async function(req, res, next) {
         // 3. 조회수 증가
         const result = await collection.updateOne(
             {_id : no }, //조건
-            {$inc : {hit : 5}}, //실제 수행할 내용 hit 를 10씩 증가시킴
+            {$inc : {hit : 2}}, //실제 수행할 내용 hit 를 2씩 증가시킴
         );
         console.log(result);
         // 4. DB수행 후 반환되는 결과 값에 따라 적절한 갑을 전달 
