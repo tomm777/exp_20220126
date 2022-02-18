@@ -29,6 +29,9 @@ const checkToken = require('../config/auth').checkToken;
 // vue 에서는 토큰 입력할 주소
 router.post('/insertaddr', checkToken,async function(req, res, next) {
   try {
+
+    const dbconn = await db.connect(dburl);
+    const collection = dbconn.db(dbname).collection('sequence');
     const result = await collection.findOneAndUpdate(
       { _id : 'SEQ_MEMBERADDR1_NO' }, // 가지고 오기 위한 조건
       { $inc : {seq : 1 } }      // seq값을 1증가씨킴
@@ -40,13 +43,21 @@ router.post('/insertaddr', checkToken,async function(req, res, next) {
         chk      : 0,  // 대표주소 설정 (숫자크면 우선순위 부여)
         regdate  : new Data(),
       }
-    }
 
-  catch(e) {
-    console.error(e);
-    res.send({status : -1, message:e});
+    const collection1 = dbconn.db(dbname).collection1('memberaddr1');
+    const result1 = await collection1.insertOne(obj)
+    if(result1.insertedId === obj._id){
+      return res.send({status : 200})
   }
-});
+    return res.send({status : 0});
+
+      }
+
+    catch(e) {
+      console.error(e);
+      res.send({status : -1, message:e});
+    }
+  });
 
 
 
