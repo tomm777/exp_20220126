@@ -20,6 +20,91 @@ const upload = multer({storage:multer.memoryStorage()});
 // Delete : delete
 // Get    : select...
 
+
+// CKEditor 내용 저장
+// /board/ckeditor_save
+router.post('/ckeditor_save', upload.single("image"),
+             async function(req, res, next) {
+    try{    
+        //1. DB접속 
+        const dbconn = await db.connect(dburl);
+        //2. DB선택 및 컬렉션 선택
+        const collection = dbconn.db(dbname).collection('sequence');
+        //3. 시퀀스에서 값을 가져오고, 그 다음 위해서 증가
+        const result = await collection.findOneAndUpdate(
+            // 데이터베이스를 참고하여 작성해야함
+            {_id : 'SEQ_BOARD1_NO'},    // 태그형태로 보관함 html로 
+            {$inc : {seq : 1}}        
+        );
+
+        const obj = {
+            _id       : result.value.seq,
+            filename  : req.file.originalname,
+            filedata  : req.file.buffer,
+            filetype  : req.file.mimetype,
+            filesize  : req.file.size,
+        };
+        // 추가할 컬렉션 선택
+        const collection1 = dbconn.db(dbname).collection('boardimage1');
+        //추가하기
+        const result1    = await collection1.insertOne(obj);
+
+        if(result1.insertedId === result.value.seq) {
+            return res.send({status : 200});
+        }
+        return res.send({status : 0});
+
+
+
+    }
+    catch(e){
+        console.error(e);
+        res.send({status : -1, message:e});
+    }
+});
+
+// CKEDitor에서 첨부하는 이미지를 보관하는 곳
+// /board/ckeditor_image
+router.post('/ckeditor_image', upload.single("image"),
+             async function(req, res, next) {
+    try{    
+        //1. DB접속 
+        const dbconn = await db.connect(dburl);
+        //2. DB선택 및 컬렉션 선택
+        const collection = dbconn.db(dbname).collection('sequence');
+        //3. 시퀀스에서 값을 가져오고, 그 다음 위해서 증가
+        const result = await collection.findOneAndUpdate(
+            // 데이터베이스를 참고하여 작성해야함
+            {_id : 'SEQ_BOARD1_NO'},    // 태그형태로 보관함 html로 
+            {$inc : {seq : 1}}        
+        );
+
+        const obj = {
+            _id       : result.value.seq,
+            filename  : req.file.originalname,
+            filedata  : req.file.buffer,
+            filetype  : req.file.mimetype,
+            filesize  : req.file.size,
+        };
+        // 추가할 컬렉션 선택
+        const collection1 = dbconn.db(dbname).collection('boardimage1');
+        //추가하기
+        const result1    = await collection1.insertOne(obj);
+
+        if(result1.insertedId === result.value.seq) {
+            return res.send({status : 200});
+        }
+        return res.send({status : 0});
+
+
+
+    }
+    catch(e){
+        console.error(e);
+        res.send({status : -1, message:e});
+    }
+});
+
 // localhost:3000/board/insert
 // insert - title, content, writer, image 
 // _id, regdate

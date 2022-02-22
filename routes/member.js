@@ -17,6 +17,11 @@ const jwtKey = require('../config/auth').securitykey;
 const jwtOptions = require('../config/auth').options;
 const checkToken = require('../config/auth').checkToken;
 
+//조회 : await axios.get(url, {headers:headers});
+//추가 : await axios.post(url, body, {headers:headers});
+//수정 : await axios.put(url, body, {headers:headers});
+//삭제 : await axios.delete(url, {headers:headers, data:{}});
+
 
 // --SQLBOOST에서 시퀀스 생성
 // db.sequence.insert({
@@ -27,44 +32,65 @@ const checkToken = require('../config/auth').checkToken;
 // 주소등록
 // /member/insertaddr
 // vue 에서는 토큰 입력할 주소
-router.post('/insertaddr', checkToken,async function(req, res, next) {
+router.post('/insertaddr', checkToken, async function(req, res, next) {
   try {
-
     const dbconn = await db.connect(dburl);
     const collection = dbconn.db(dbname).collection('sequence');
     const result = await collection.findOneAndUpdate(
       { _id : 'SEQ_MEMBERADDR1_NO' }, // 가지고 오기 위한 조건
-      { $inc : {seq : 1 } }      // seq값을 1증가씨킴
+      { $inc : {seq : 1 } }           // seq값을 1증가씨킴
     );
-      const obj = {
-        _id     : result.value.seq,
-        address : req.body.address, // 주소정보
-        memberid : req.body.uid,    //토큰에서 꺼내기
-        chk      : 0,  // 대표주소 설정 (숫자크면 우선순위 부여)
-        regdate  : new Data(),
-      }
 
-    const collection1 = dbconn.db(dbname).collection1('memberaddr1');
-    const result1 = await collection1.insertOne(obj)
-    if(result1.insertedId === obj._id){
-      return res.send({status : 200})
-  }
-    return res.send({status : 0});
-
-      }
-
-    catch(e) {
-      console.error(e);
-      res.send({status : -1, message:e});
+    const obj = {
+      _id       : result.value.seq,  //시퀀스값
+      address   : req.body.address, //주소정보
+      memberid  : req.body.uid, // 토큰에서 꺼내기
+      chk       : 0,  // 대표주소설정 (숫자크면 우선순위 부여)
+      regdate   : new Date()
     }
-  });
+
+    // 컬렉션명 memberaddr1
+    const collection1 = dbconn.db(dbname).collection('memberaddr1');
+    const result1     = await collection1.insertOne(obj);
+
+    // 결과확인
+    if(result1.insertedId === result.value.seq) {
+      return res.send({status : 200});
+    }
+    return res.send({status : 0});
+  }
+  catch(e) {
+    console.error(e);
+    res.send({status : -1, message:e});
+  }
+});
 
 
 
 // 주소목록
 router.get('/selectaddr', checkToken,async function(req, res, next) {
   try {
-    
+    const email = req.body.uid; // 토큰에서 이메일 꺼내기
+    const dbconn = await db.connect(dburl);
+    const collection = dbconn.db(dbname).collection('memberaddr1');
+
+    const result = await collection.find(
+      {memberid : email},
+      {projection : { memberid : 0 }}
+    ).sort({_id : 1}).toArray();
+
+    // [{chk : 0 },{chk : 0},{chk : 0}] 3개면 이렇게 나옴
+    // 체크 된 것이 없으면 result[0]를 1로 바꾼다
+    // 대표주소
+    let sum = 0;
+    for(let i=0;i<result.length;i++){
+      // sum = sum + Number(result[i].chk);
+      sum += Number(result[i].chk);
+    }
+    if(sum <= 0){  // 체크 된것이 없으면
+      result[0].chk = 1;
+    }
+    return res.send({status : 200, result:result});
     }
 
   catch(e) {
@@ -75,8 +101,60 @@ router.get('/selectaddr', checkToken,async function(req, res, next) {
 
 // 주소삭제
 router.delete('/deleteaddr', checkToken,async function(req, res, next) {
-  try {
+  try{
+  
+  const email = req.body.uid; // 토큰에서 이메일 꺼내기
+  const no = req.body.no;     // 삭제할 _id값
+
+  // 1. db연결, db선택, 컬렉션선택
+  const dbconn = await db.connect(dburl);
+  const collection = dbconn.db(dbname).collection('memberaddr1');
+    const result = await collection.deleteOne(
+      { _id  : no, memberid : email }
+    );
     
+    if(result.deletedCount === 1){
+      return res.send({status : 200});
+    }
+  // 로그인 실패시
+  return res.send({status : 0});
+}
+catch(e) {
+  console.error(e);
+  res.send({status : -1, message:e});
+}
+});
+
+
+// 대표주소수정
+router.put('/updatechkaddr', checkToken,async function(req, res, next) {
+  try {
+    const email = req.body.uid; // 토큰에서 이메일 꺼내기
+    const no = req.body.no;     // 삭제할 _id값
+
+    const dbconn = await db.connect(dburl);
+    const collection = dbconn.db(dbname).collection('memberaddr1');
+
+    const result = await collection.updateMany(
+      {memberid : email}, // memberid가 e메일과 일치
+      {$set : {chk : 0}}
+    );
+    console.log(result);
+
+    if(result.matchedCount > 0 ){
+
+
+    // 1개만 chk 1 로 바꿈
+    const result1 = await collection.updateOne(
+      {_id: no, memberid : email}, // memberid가 e메일과 일치
+      {$set : {chk : 1}}
+    );
+
+    if(result1.modifiedCount === 1){
+      return res.send({status : 200})
+    }
+  }
+  return res.send({status : 0})
     }
 
   catch(e) {
@@ -85,22 +163,32 @@ router.delete('/deleteaddr', checkToken,async function(req, res, next) {
   }
 });
 
-// 주소수정
-router.put('/updateaddr', checkToken,async function(req, res, next) {
-  try {
-    
+// 주소 수정
+router.put('/updateaddr', checkToken, async function(req, res, next) {
+  try{    
+    const email = req.body.uid; // 토큰에서 이메일 꺼내기
+    const no = req.body.no;     // 수정할 조건 _id값
+    const address = req.body.address; // 수정할 내용
+
+    const dbconn = await db.connect(dburl);
+    const collection = dbconn.db(dbname).collection('memberaddr1');
+    const result = await collection.updateOne(
+      {memberid : email, _id : no}, 
+      {$set : {address : address}}
+    );
+    if(result.modifiedCount === 1){
+      return res.send({status : 200})
     }
+    return res.send({status : 0})
 
-  catch(e) {
-    console.error(e);
-    res.send({status : -1, message:e});
-  }
-});
-
-// 대표주소 설정
-router.put('/updatechkaddr', checkToken, async function(req, res, next) {
-
-});
+    }
+    
+    catch(e){
+        console.error(e);
+        res.send({status : -1, message:e});
+    }
+    });
+    
 
 // 토큰이 오면 정보전송 전송함
 // localhost:3000/member/validation
